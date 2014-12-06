@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 import static org.ding.DingManager.dingManager;
 import static org.ding.DingName.dingName;
 import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 public class DingTest {
@@ -92,7 +92,18 @@ public class DingTest {
         Assert.assertThat(hello.toString(), is("{http://ding.it.or.else}hello"));
         dingManager.addBean(hello, () -> "World!", String.class);
 
-        Assert.assertThat(dingManager.getBean("hello", String.class).get(), is("Hello"));
-        Assert.assertThat(dingManager.getBean(hello, String.class).get(), is("World!"));
+        assertThat(dingManager.getBean("hello", String.class).get(), is("Hello"));
+        assertThat(dingManager.getBean(hello, String.class).get(), is("World!"));
+    }
+
+    @Test
+    public void testRecursive() throws Exception {
+        dingManager.addBean("secondBean", SecondBean::new, SecondBean.class);
+        dingManager.addBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
+
+        final Supplier<SecondBean> secondBean = dingManager.getBean("secondBean", SecondBean.class);
+        assertThat(secondBean.get().getName(), is("Ernie"));
+        assertThat(secondBean.get().getFirstBean().getName(), is("Hildegunst"));
+        assertThat(secondBean.get().getFirstBean().getSecondBean().getName(), is("Ernie"));
     }
 }
