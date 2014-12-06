@@ -4,21 +4,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 import static java.lang.String.format;
-import static java.util.Collections.synchronizedList;
 
 public enum DingManager {
     dingManager;
 
     private final Logger logger = Logger.getLogger(getClass().getName());
 
-    // might be concurrently accessed
-    private List<Object> beanList = synchronizedList(new ArrayList<>());
+    // might be concurrently accessed but should be optimized for get()
+    private List<Object> beanList = new CopyOnWriteArrayList<>();
 
     // both collections must always be protected by the lock
     private List<Supplier<?>> supplierList = new ArrayList<>();
