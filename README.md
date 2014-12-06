@@ -30,7 +30,9 @@ Use the bean:
 
     System.out.println(helloBean.get().length());
     System.out.println(helloBean.get().toString());
-The bean is created during the first call to get() and cached until it is eventually replaced by another bean.
+The bean is created during the first call to get() and cached until it is eventually replaced by another bean. Please
+do not store the return value of helloBean.get() for a longer time since it would no longer be managed by the
+dingManager. Keeping it in a local variable for a short interval would be okay
 
 Replace an existing bean:
 
@@ -42,9 +44,13 @@ CharSequence to String. That works because String is a subtype of CharSequence. 
 of CharSequence since we have retrieved the bean wrapper with type CharSequence. That means that e.g.
 helloBean.get().startsWith(...) is invalid.
 
-Registering a class is similar:
+The rationale for replacing a bean is that a library might provide some default beans and your application wants to
+replace some of them. Or the test code wants to provide some mock implementations.
+
+A class can be registered the same way either through the constructor or a factory method:
 
     dingManager.addBean("myservice", MyServiceImplementation::new, MyServiceInterface.class);
+    dingManager.addBean("myservice", MyServiceFactory::createService, MyServiceInterface.class);
 
 You can use namespaces to avoid name clashes with other libraries:
 
