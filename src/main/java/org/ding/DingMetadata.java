@@ -1,19 +1,33 @@
 package org.ding;
 
-class DingMetadata<BeanType> {
-    private final int index;
-    private final Class<? extends BeanType> beanClass;
+import java.util.function.Supplier;
 
-    public DingMetadata(int index, Class<? extends BeanType> beanClass) {
-        this.index = index;
+class DingMetadata<BeanType> {
+    private final DingName name;
+    private final Supplier<BeanType> supplier;
+    private final Class<? extends BeanType> beanClass;
+    private final DingScope scope;
+
+    public DingMetadata(DingName name, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass, DingScope scope) {
+        this.name = name;
+        this.supplier = supplier;
         this.beanClass = beanClass;
+        this.scope = scope;
     }
 
-    public int getIndex() {
-        return index;
+    public DingName getName() {
+        return name;
+    }
+
+    public Supplier<BeanType> getSupplier() {
+        return supplier;
     }
 
     public Class<? extends BeanType> getBeanClass() {
         return beanClass;
+    }
+
+    public DingScope getScope() {
+        return scope;
     }
 }

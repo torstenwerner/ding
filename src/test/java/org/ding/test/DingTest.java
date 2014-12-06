@@ -1,6 +1,7 @@
 package org.ding.test;
 
 import org.ding.DingName;
+import org.ding.DingScope;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +41,19 @@ public class DingTest {
         assertThat(bean02.get(), notNullValue());
         assertThat(bean02.get().length(), is(6));
         assertThat(bean02.get(), startsWith("Wo"));
+    }
+
+    @Test
+    public void testThreads() throws Exception {
+        dingManager.addBean("hello", () -> {
+            final StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("Hello");
+            return stringBuilder;
+        }, CharSequence.class, DingScope.SCOPE_THREAD);
+        final Supplier<CharSequence> bean01 = dingManager.getBean("hello", CharSequence.class);
+        assertThat(bean01.get(), notNullValue());
+        assertThat(bean01.get().length(), is(5));
+        assertThat(bean01.get().toString(), is("Hello"));
     }
 
     @Test
