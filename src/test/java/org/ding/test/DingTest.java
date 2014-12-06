@@ -10,7 +10,7 @@ import java.util.function.Supplier;
 
 import static org.ding.DingManager.dingManager;
 import static org.ding.DingName.dingName;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -43,17 +43,29 @@ public class DingTest {
         assertThat(bean02.get(), startsWith("Wo"));
     }
 
+    private Long threadId;
+
     @Test
     public void testThreads() throws Exception {
         dingManager.addBean("hello", () -> {
             final StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("Hello");
+            threadId = Thread.currentThread().getId();
             return stringBuilder;
         }, CharSequence.class, DingScope.SCOPE_THREAD);
         final Supplier<CharSequence> bean01 = dingManager.getBean("hello", CharSequence.class);
         assertThat(bean01.get(), notNullValue());
         assertThat(bean01.get().length(), is(5));
         assertThat(bean01.get().toString(), is("Hello"));
+        assertThat(threadId, notNullValue());
+        final Long oldThreadId = threadId;
+
+        threadId = null;
+        final Thread newThread = new Thread(bean01::get);
+        newThread.start();
+        newThread.join();
+        assertThat(threadId, notNullValue());
+        assertThat(threadId, not(equalTo(oldThreadId)));
     }
 
     @Test

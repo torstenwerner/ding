@@ -164,7 +164,7 @@ public enum DingManager {
 
     private <BeanType> BeanType getThreadBean(int index, DingName dingName) {
         final ArrayList<Object> beanList = threadBeanList.get();
-        IntStream.range(index, beanList.size() + 1).forEach(i -> beanList.add(null));
+        IntStream.range(beanList.size(), index + 1).forEach(i -> beanList.add(null));
         BeanType bean = (BeanType) beanList.get(index);
         if (bean == null) {
             lock.lock();
