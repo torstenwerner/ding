@@ -48,6 +48,17 @@ public enum DingManager {
         }
     }
 
+    public void initializeSingletons() {
+        lock.lock();
+        try {
+            singletonIndexMap.entrySet().stream()
+                    .map(Map.Entry::getKey)
+                    .forEach(key -> getSingletonBean(singletonIndexMap.get(key), key));
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * adds or replaces a bean
      *

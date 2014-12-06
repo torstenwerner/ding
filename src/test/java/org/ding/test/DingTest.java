@@ -155,4 +155,14 @@ public class DingTest {
         firstBean.get();
         assertThat(FirstBean.initialized, is(true));
     }
+
+    @Test
+    public void testInitialize03() throws Exception {
+        FirstBean.initialized = false;
+        dingManager.addSingletonBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
+        dingManager.addSingletonBean("secondBean", SecondBean::new, SecondBean.class);
+        assertThat(FirstBean.initialized, is(false));
+        dingManager.initializeSingletons();
+        assertThat(FirstBean.initialized, is(true));
+    }
 }
