@@ -1,27 +1,25 @@
-package org.ding.sample;
+package org.ding;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
 import static java.util.Collections.synchronizedList;
 
-public enum BeanManager {
-    beanManager;
+public enum DingManager {
+    dingManager;
 
     // might be concurrently accessed
     private List<Object> beanList = synchronizedList(new ArrayList<>());
 
     // both collections must always be protected by the lock
     private List<Supplier<?>> supplierList = new ArrayList<>();
-    private Map<String, BeanMetadata<?>> singletonMap = new HashMap<>();
+    private Map<String, DingMetadata<?>> singletonMap = new HashMap<>();
 
     private Lock lock = new ReentrantLock();
 
@@ -43,7 +41,7 @@ public enum BeanManager {
                 beanList.add(null);
                 supplierList.add(supplier);
             }
-            singletonMap.put(beanName, new BeanMetadata<>(index, beanClass));
+            singletonMap.put(beanName, new DingMetadata<>(index, beanClass));
         } finally {
             lock.unlock();
         }
@@ -81,7 +79,7 @@ public enum BeanManager {
             if (!singletonMap.containsKey(beanName)) {
                 throw new RuntimeException("bean does not exist");
             }
-            final BeanMetadata<?> metadata = singletonMap.get(beanName);
+            final DingMetadata<?> metadata = singletonMap.get(beanName);
             if (!beanClass.isAssignableFrom(metadata.getBeanClass())) {
                 final String message = format("incompatible class, bean class is %s but got %s", metadata.getBeanClass(),
                         beanClass);
@@ -91,25 +89,5 @@ public enum BeanManager {
         } finally {
             lock.unlock();
         }
-    }
-
-    public static void main(String[] args) {
-        final StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Hello");
-        beanManager.addBean("hello", () -> stringBuilder, CharSequence.class);
-        final Supplier<CharSequence> bean01 = beanManager.getBean("hello", CharSequence.class);
-        System.out.println(bean01.get().length());
-        System.out.println(bean01.get());
-
-        beanManager.addBean("hello", () -> "World!", String.class);
-        System.out.println(bean01.get().length());
-        System.out.println(bean01.get());
-
-        final Supplier<String> bean02 = beanManager.getBean("hello", String.class);
-        System.out.println(bean02.get().length());
-        System.out.println(bean02.get().startsWith("Wo"));
-
-        beanManager.addBean("hello", () -> 26, String.class);
-        //System.out.println(bean02.get().length());
     }
 }

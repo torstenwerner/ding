@@ -1,10 +1,10 @@
-package org.ding.sample;
+package org.ding;
 
-public class BeanMetadata<BeanType> {
+class DingMetadata<BeanType> {
     private final int index;
     private final Class<? extends BeanType> beanClass;
 
-    public BeanMetadata(int index, Class<? extends BeanType> beanClass) {
+    public DingMetadata(int index, Class<? extends BeanType> beanClass) {
         this.index = index;
         this.beanClass = beanClass;
     }
