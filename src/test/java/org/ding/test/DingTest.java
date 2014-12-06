@@ -21,9 +21,11 @@ public class DingTest {
 
     @Test
     public void testBasicUsage() throws Exception {
-        final StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Hello");
-        dingManager.addBean("hello", () -> stringBuilder, CharSequence.class);
+        dingManager.addBean("hello", () -> {
+            final StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("Hello");
+            return stringBuilder;
+        }, CharSequence.class);
         final Supplier<CharSequence> bean01 = dingManager.getBean("hello", CharSequence.class);
         assertThat(bean01.get(), notNullValue());
         assertThat(bean01.get().length(), is(5));
