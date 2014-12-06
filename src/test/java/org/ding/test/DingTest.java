@@ -102,8 +102,7 @@ public class DingTest {
         dingManager.addBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
 
         final Supplier<SecondBean> secondBean = dingManager.getBean("secondBean", SecondBean.class);
-        assertThat(secondBean.get().getName(), is("Ernie"));
-        assertThat(secondBean.get().getFirstBean().getName(), is("Hildegunst"));
         assertThat(secondBean.get().getFirstBean().getSecondBean().getName(), is("Ernie"));
+        assertThat(secondBean.get().getFirstBean().getName(), is("Hildegunst"));
     }
 }
