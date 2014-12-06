@@ -1,5 +1,6 @@
 package org.ding.test;
 
+import org.ding.DingName;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -7,6 +8,7 @@ import org.junit.Test;
 import java.util.function.Supplier;
 
 import static org.ding.DingManager.dingManager;
+import static org.ding.DingName.dingName;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
@@ -46,7 +48,7 @@ public class DingTest {
             fail("missing exception");
         } catch (RuntimeException e) {
             assertThat(e.getMessage(),
-                    is("incompatible class, bean class is class java.lang.String but got class java.lang.Integer"));
+                    is("incompatible class for bean hello, bean class is class java.lang.String but got class java.lang.Integer"));
         }
 
     }
@@ -62,7 +64,7 @@ public class DingTest {
             fail("exception missing");
         } catch (RuntimeException e) {
             assertThat(e.getMessage(),
-                    is("incompatible class, bean class is class java.lang.Integer but got class java.lang.String"));
+                    is("incompatible class for bean hello, bean class is class java.lang.Integer but got class java.lang.String"));
         }
     }
 
@@ -76,7 +78,19 @@ public class DingTest {
             fail("missing exception");
         } catch (RuntimeException e) {
             assertThat(e.getMessage(),
-                    is("incompatible classes, old: class java.lang.String, new: interface java.lang.CharSequence"));
+                    is("incompatible classes for bean hello, old: class java.lang.String, new: interface java.lang.CharSequence"));
         }
+    }
+
+    @Test
+    public void testNameSpace() throws Exception {
+        dingManager.addBean("hello", () -> "Hello", String.class);
+
+        final DingName hello = dingName("http://ding.it.or.else", "hello");
+        Assert.assertThat(hello.toString(), is("{http://ding.it.or.else}hello"));
+        dingManager.addBean(hello, () -> "World!", String.class);
+
+        Assert.assertThat(dingManager.getBean("hello", String.class).get(), is("Hello"));
+        Assert.assertThat(dingManager.getBean(hello, String.class).get(), is("World!"));
     }
 }

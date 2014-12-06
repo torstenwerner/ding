@@ -22,7 +22,7 @@ public enum DingManager {
 
     // both collections must always be protected by the lock
     private List<Supplier<?>> supplierList = new ArrayList<>();
-    private Map<String, DingMetadata<?>> singletonMap = new HashMap<>();
+    private Map<DingName, DingMetadata<?>> singletonMap = new HashMap<>();
 
     private Lock lock = new ReentrantLock();
 
@@ -44,40 +44,49 @@ public enum DingManager {
     /**
      * adds or replaces a bean
      *
-     * @param beanName  unique name of the bean
+     * @param dingName  unique name of the bean including namespace
      * @param supplier  supplier that creates a new object of type BeanType
      * @param beanClass type or some base type of the bean object which is used for error checking
      */
-    public <BeanType> void addBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+    public <BeanType> void addBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
         lock.lock();
         try {
             int index;
-            if (singletonMap.containsKey(beanName)) {
-                final Class<?> oldBeanClass = singletonMap.get(beanName).getBeanClass();
+            if (singletonMap.containsKey(dingName)) {
+                final Class<?> oldBeanClass = singletonMap.get(dingName).getBeanClass();
                 if (!oldBeanClass.isAssignableFrom(beanClass)) {
-                    final String message = format("incompatible classes, old: %s, new: %s",
+                    final String message = format("incompatible classes for bean %s, old: %s, new: %s", dingName,
                             oldBeanClass, beanClass);
                     throw new RuntimeException(message);
                 }
-                index = singletonMap.get(beanName).getIndex();
+                index = singletonMap.get(dingName).getIndex();
                 beanList.set(index, null);
                 supplierList.set(index, supplier);
-                logger.info(() -> format("replace bean %s of type %s with type %s", beanName, oldBeanClass, beanClass));
+                logger.info(() -> format("replace bean %s of type %s with type %s", dingName, oldBeanClass, beanClass));
             } else {
                 index = beanList.size();
                 beanList.add(null);
                 supplierList.add(supplier);
-                logger.fine(() -> format("add bean %s of type %s", beanName, beanClass));
+                logger.fine(() -> format("add bean %s of type %s", dingName, beanClass));
             }
-            singletonMap.put(beanName, new DingMetadata<>(index, beanClass));
+            singletonMap.put(dingName, new DingMetadata<>(index, beanClass));
         } finally {
             lock.unlock();
         }
     }
 
+    /**
+     * Same as @addBean but without namespace.
+     *
+     * @param beanName bean name without namespace
+     */
+    public <BeanType> void addBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+        addBean(DingName.dingName(beanName), supplier, beanClass);
+    }
+
     // The default execution path is not protected by the lock for performance reasons. This method should be really
     // fast for the default execution path.
-    private <BeanType> BeanType getBean(int index, String beanName, Class<? extends BeanType> beanClass) {
+    private <BeanType> BeanType getBean(int index, DingName dingName, Class<? extends BeanType> beanClass) {
         // This line is potentially accessed concurrently. It is protected by the synchronizedList.
         BeanType bean = (BeanType) beanList.get(index);
 
@@ -89,18 +98,18 @@ public enum DingManager {
                     final Supplier<BeanType> supplier = (Supplier<BeanType>) supplierList.get(index);
                     bean = supplier.get();
                     if (!beanClass.isAssignableFrom(bean.getClass())) {
-                        final String message = format("incompatible class, bean class is %s but got %s", bean.getClass(),
-                                beanClass);
+                        final String message = format("incompatible class for bean %s, bean class is %s but got %s",
+                                dingName, bean.getClass(), beanClass);
                         throw new RuntimeException(message);
                     }
                     beanList.set(index, bean);
-                    logger.finer(() -> format("created new bean %s of type %s", beanName, beanClass));
+                    logger.finer(() -> format("created new bean %s of type %s", dingName, beanClass));
                 }
             } finally {
                 lock.unlock();
             }
         } else {
-            logger.finest(() -> format("found existing bean %s of type %s", beanName, beanClass));
+            logger.finest(() -> format("found existing bean %s of type %s", dingName, beanClass));
         }
         return bean;
     }
@@ -108,26 +117,35 @@ public enum DingManager {
     /**
      * fetches a supplier for the bean
      *
-     * @param beanName  unique name of the bean
+     * @param dingName  unique name of the bean
      * @param beanClass type or a subtype of the registered bean
      * @return a supplier that can be used to fetch the actual bean
      */
-    public <BeanType> Supplier<BeanType> getBean(String beanName, Class<? extends BeanType> beanClass) {
+    public <BeanType> Supplier<BeanType> getBean(DingName dingName, Class<? extends BeanType> beanClass) {
         lock.lock();
         try {
-            if (!singletonMap.containsKey(beanName)) {
+            if (!singletonMap.containsKey(dingName)) {
                 throw new RuntimeException("bean does not exist");
             }
-            final DingMetadata<?> metadata = singletonMap.get(beanName);
+            final DingMetadata<?> metadata = singletonMap.get(dingName);
             if (!beanClass.isAssignableFrom(metadata.getBeanClass())) {
-                final String message = format("incompatible class, bean class is %s but got %s", metadata.getBeanClass(),
-                        beanClass);
+                final String message = format("incompatible class for bean %s, bean class is %s but got %s", dingName,
+                        metadata.getBeanClass(), beanClass);
                 throw new RuntimeException(message);
             }
-            logger.finer(() -> format("created wrapper for bean %s of type %s", beanName, beanClass));
-            return () -> getBean(metadata.getIndex(), beanName, beanClass);
+            logger.finer(() -> format("created wrapper for bean %s of type %s", dingName, beanClass));
+            return () -> getBean(metadata.getIndex(), dingName, beanClass);
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * same as @getBean but without namespace
+     *
+     * @param beanName bean name without namespace
+     */
+    public <BeanType> Supplier<BeanType> getBean(String beanName, Class<? extends BeanType> beanClass) {
+        return getBean(DingName.dingName(beanName), beanClass);
     }
 }
