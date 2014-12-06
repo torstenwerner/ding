@@ -80,7 +80,7 @@ public enum DingManager {
         }
     }
 
-    private <BeanType> void addThreadBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+    public <BeanType> void addThreadBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
         lock.lock();
         try {
             if (metadataMap.containsKey(dingName)) {
@@ -103,34 +103,17 @@ public enum DingManager {
         }
     }
 
-    public <BeanType> void addBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass,
-                                   DingScope scope) {
-        switch (scope) {
-            case SCOPE_SINGLETON:
-                addSingletonBean(dingName, supplier, beanClass);
-                return;
-            case SCOPE_THREAD:
-                addThreadBean(dingName, supplier, beanClass);
-                return;
-        }
-    }
-
     /**
      * Same as @addBean but without namespace.
      *
      * @param beanName bean name without namespace
      */
-    public <BeanType> void addBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass,
-                                   DingScope scope) {
-        addBean(dingName(beanName), supplier, beanClass, scope);
+    public <BeanType> void addSingletonBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+        addSingletonBean(dingName(beanName), supplier, beanClass);
     }
 
-    public <BeanType> void addBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
-        addBean(dingName, supplier, beanClass, SCOPE_SINGLETON);
-    }
-
-    public <BeanType> void addBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
-        addBean(dingName(beanName), supplier, beanClass, SCOPE_SINGLETON);
+    public <BeanType> void addThreadBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+        addThreadBean(dingName(beanName), supplier, beanClass);
     }
 
     // The default execution path is not protected by the lock for performance reasons. This method should be really

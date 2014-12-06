@@ -1,5 +1,5 @@
 package org.ding;
 
-public enum DingScope {
+enum DingScope {
     SCOPE_SINGLETON, SCOPE_THREAD;
 }

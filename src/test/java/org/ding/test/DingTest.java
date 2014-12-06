@@ -22,7 +22,7 @@ public class DingTest {
 
     @Test
     public void testBasicUsage() throws Exception {
-        dingManager.addBean("hello", () -> {
+        dingManager.addSingletonBean("hello", () -> {
             final StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("Hello");
             return stringBuilder;
@@ -32,7 +32,7 @@ public class DingTest {
         assertThat(bean01.get().length(), is(5));
         assertThat(bean01.get().toString(), is("Hello"));
 
-        dingManager.addBean("hello", () -> "World!", String.class);
+        dingManager.addSingletonBean("hello", () -> "World!", String.class);
         assertThat(bean01.get(), notNullValue());
         assertThat(bean01.get().length(), is(6));
         assertThat(bean01.get().toString(), is("World!"));
@@ -47,12 +47,12 @@ public class DingTest {
 
     @Test
     public void testThreads() throws Exception {
-        dingManager.addBean("hello", () -> {
+        dingManager.addThreadBean("hello", () -> {
             final StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("Hello");
             threadId = Thread.currentThread().getId();
             return stringBuilder;
-        }, CharSequence.class, DingScope.SCOPE_THREAD);
+        }, CharSequence.class);
         final Supplier<CharSequence> bean01 = dingManager.getBean("hello", CharSequence.class);
         assertThat(bean01.get(), notNullValue());
         assertThat(bean01.get().length(), is(5));
@@ -70,7 +70,7 @@ public class DingTest {
 
     @Test
     public void testWrongTypeDuringGet() throws Exception {
-        dingManager.addBean("hello", () -> "World!", String.class);
+        dingManager.addSingletonBean("hello", () -> "World!", String.class);
         try {
             dingManager.getBean("hello", Integer.class);
             fail("missing exception");
@@ -83,10 +83,10 @@ public class DingTest {
 
     @Test
     public void testTypeDuringAdd() throws Exception {
-        dingManager.addBean("hello", () -> "World!", String.class);
+        dingManager.addSingletonBean("hello", () -> "World!", String.class);
         final Supplier<CharSequence> bean = dingManager.getBean("hello", String.class);
         bean.get();
-        dingManager.addBean("hello", () -> 26, String.class);
+        dingManager.addSingletonBean("hello", () -> 26, String.class);
         try {
             bean.get();
             fail("exception missing");
@@ -98,11 +98,11 @@ public class DingTest {
 
     @Test
     public void testTypeDoubleAdd() throws Exception {
-        dingManager.addBean("hello", () -> "Hello", String.class);
+        dingManager.addSingletonBean("hello", () -> "Hello", String.class);
         final Supplier<CharSequence> bean = dingManager.getBean("hello", String.class);
         bean.get();
         try {
-            dingManager.addBean("hello", () -> "World!", CharSequence.class);
+            dingManager.addSingletonBean("hello", () -> "World!", CharSequence.class);
             fail("missing exception");
         } catch (RuntimeException e) {
             assertThat(e.getMessage(),
@@ -112,11 +112,11 @@ public class DingTest {
 
     @Test
     public void testNameSpace() throws Exception {
-        dingManager.addBean("hello", () -> "Hello", String.class);
+        dingManager.addSingletonBean("hello", () -> "Hello", String.class);
 
         final DingName hello = dingName("http://ding.it.or.else", "hello");
         Assert.assertThat(hello.toString(), is("{http://ding.it.or.else}hello"));
-        dingManager.addBean(hello, () -> "World!", String.class);
+        dingManager.addSingletonBean(hello, () -> "World!", String.class);
 
         assertThat(dingManager.getBean("hello", String.class).get(), is("Hello"));
         assertThat(dingManager.getBean(hello, String.class).get(), is("World!"));
@@ -124,8 +124,8 @@ public class DingTest {
 
     @Test
     public void testRecursive() throws Exception {
-        dingManager.addBean("secondBean", SecondBean::new, SecondBean.class);
-        dingManager.addBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
+        dingManager.addSingletonBean("secondBean", SecondBean::new, SecondBean.class);
+        dingManager.addSingletonBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
 
         final Supplier<SecondBean> secondBean = dingManager.getBean("secondBean", SecondBean.class);
         assertThat(secondBean.get().getFirstBean().getSecondBean().getName(), is("Ernie"));
