@@ -179,7 +179,7 @@ public enum DingManager {
         lock.lock();
         try {
             if (!metadataMap.containsKey(dingName)) {
-                throw new RuntimeException("bean does not exist");
+                throw new RuntimeException(format("bean %s does not exist", dingName));
             }
             final DingMetadata<BeanType> metadata = (DingMetadata<BeanType>) metadataMap.get(dingName);
             if (!beanClass.isAssignableFrom(metadata.getBeanClass())) {

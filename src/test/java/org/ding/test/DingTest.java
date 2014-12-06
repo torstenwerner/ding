@@ -1,7 +1,6 @@
 package org.ding.test;
 
 import org.ding.DingName;
-import org.ding.DingScope;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -130,5 +129,30 @@ public class DingTest {
         final Supplier<SecondBean> secondBean = dingManager.getBean("secondBean", SecondBean.class);
         assertThat(secondBean.get().getFirstBean().getSecondBean().getName(), is("Ernie"));
         assertThat(secondBean.get().getFirstBean().getName(), is("Hildegunst"));
+    }
+
+    @Test
+    public void testInitialize01() throws Exception {
+        FirstBean.initialized = false;
+        dingManager.addSingletonBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
+        final Supplier<FirstBean> firstBean = dingManager.getBean("firstBean", FirstBean.class);
+        assertThat(FirstBean.initialized, is(false));
+        try {
+            firstBean.get();
+            fail("missing exception");
+        } catch (RuntimeException e) {
+            assertThat(e.getMessage(), is("bean secondBean does not exist"));
+        }
+    }
+
+    @Test
+    public void testInitialize02() throws Exception {
+        FirstBean.initialized = false;
+        dingManager.addSingletonBean("firstBean", () -> new FirstBean("Hildegunst"), FirstBean.class);
+        dingManager.addSingletonBean("secondBean", SecondBean::new, SecondBean.class);
+        final Supplier<FirstBean> firstBean = dingManager.getBean("firstBean", FirstBean.class);
+        assertThat(FirstBean.initialized, is(false));
+        firstBean.get();
+        assertThat(FirstBean.initialized, is(true));
     }
 }
