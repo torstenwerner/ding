@@ -1,5 +1,7 @@
 package org.ding;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Supplier;
 
 class DingMetadata<BeanType> {
@@ -7,12 +9,15 @@ class DingMetadata<BeanType> {
     private final Supplier<BeanType> supplier;
     private final Class<? extends BeanType> beanClass;
     private final DingScope scope;
+    private final List<DingDependency> dependencies;
 
-    public DingMetadata(DingName name, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass, DingScope scope) {
+    public DingMetadata(DingName name, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass, DingScope scope,
+                        DingDependency... dependencies) {
         this.name = name;
         this.supplier = supplier;
         this.beanClass = beanClass;
         this.scope = scope;
+        this.dependencies = Arrays.asList(dependencies);
     }
 
     public DingName getName() {
@@ -29,5 +34,9 @@ class DingMetadata<BeanType> {
 
     public DingScope getScope() {
         return scope;
+    }
+
+    public List<DingDependency> getDependencies() {
+        return dependencies;
     }
 }

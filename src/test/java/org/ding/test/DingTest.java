@@ -1,5 +1,6 @@
 package org.ding.test;
 
+import org.ding.DingDependency;
 import org.ding.DingName;
 import org.junit.Assert;
 import org.junit.Before;
@@ -164,5 +165,16 @@ public class DingTest {
         assertThat(FirstBean.initialized, is(false));
         dingManager.initializeSingletons();
         assertThat(FirstBean.initialized, is(true));
+    }
+
+    @Test
+    public void testInject() throws Exception {
+        dingManager.addSingletonBean("string", () -> "Hello", String.class);
+        dingManager.addSingletonBean("stringBuilder", StringBuilder::new, StringBuilder.class,
+                new DingDependency<>("string", StringBuilder::append, String.class));
+
+
+        final Supplier<StringBuilder> sb = dingManager.getBean("stringBuilder", StringBuilder.class);
+        assertThat(sb.get().toString(), is("Hello"));
     }
 }

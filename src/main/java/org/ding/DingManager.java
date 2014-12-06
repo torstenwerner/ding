@@ -66,7 +66,9 @@ public enum DingManager {
      * @param supplier  supplier that creates a new object of type BeanType
      * @param beanClass type or some base type of the bean object which is used for error checking
      */
-    public <BeanType> void addSingletonBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+    public <BeanType> void addSingletonBean(DingName dingName, Supplier<BeanType> supplier,
+                                            Class<? extends BeanType> beanClass,
+                                            DingDependency<BeanType, ? extends Object>... dependencies) {
         lock.lock();
         try {
             if (metadataMap.containsKey(dingName)) {
@@ -85,13 +87,15 @@ public enum DingManager {
                 singletonBeanList.add(null);
                 logger.fine(() -> format("add bean %s of type %s", dingName, beanClass));
             }
-            metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_SINGLETON));
+            metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_SINGLETON, dependencies));
         } finally {
             lock.unlock();
         }
     }
 
-    public <BeanType> void addThreadBean(DingName dingName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
+    public <BeanType> void addThreadBean(DingName dingName, Supplier<BeanType> supplier,
+                                         Class<? extends BeanType> beanClass,
+                                         DingDependency<BeanType, ? extends Object>... dependencies) {
         lock.lock();
         try {
             if (metadataMap.containsKey(dingName)) {
@@ -108,7 +112,7 @@ public enum DingManager {
                 final int index = singletonBeanList.size();
                 singletonIndexMap.put(dingName, index);
             }
-            metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_THREAD));
+            metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_THREAD, dependencies));
         } finally {
             lock.unlock();
         }
@@ -119,12 +123,16 @@ public enum DingManager {
      *
      * @param beanName bean name without namespace
      */
-    public <BeanType> void addSingletonBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
-        addSingletonBean(dingName(beanName), supplier, beanClass);
+    public <BeanType> void addSingletonBean(String beanName, Supplier<BeanType> supplier,
+                                            Class<? extends BeanType> beanClass,
+                                            DingDependency<BeanType, ? extends Object>... dependencies) {
+        addSingletonBean(dingName(beanName), supplier, beanClass, dependencies);
     }
 
-    public <BeanType> void addThreadBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
-        addThreadBean(dingName(beanName), supplier, beanClass);
+    public <BeanType> void addThreadBean(String beanName, Supplier<BeanType> supplier,
+                                         Class<? extends BeanType> beanClass,
+                                         DingDependency<BeanType, ? extends Object>... dependencies) {
+        addThreadBean(dingName(beanName), supplier, beanClass, dependencies);
     }
 
     // The default execution path is not protected by the lock for performance reasons. This method should be really
@@ -139,7 +147,8 @@ public enum DingManager {
                 bean = (BeanType) singletonBeanList.get(index);
                 if (bean == null) {
                     final DingMetadata<BeanType> metadata = (DingMetadata<BeanType>) metadataMap.get(dingName);
-                    bean = metadata.getSupplier().get();
+                    final BeanType newBean = metadata.getSupplier().get();
+                    bean = newBean;
                     if (!metadata.getBeanClass().isAssignableFrom(bean.getClass())) {
                         final String message = format("incompatible class for bean %s, bean class is %s but got %s",
                                 metadata.getName(), bean.getClass(), metadata.getBeanClass());
@@ -148,6 +157,16 @@ public enum DingManager {
                     singletonBeanList.set(index, bean);
                     logger.finer(() -> format("created new bean %s of type %s", metadata.getName(),
                             metadata.getBeanClass()));
+                    metadata.getDependencies().stream()
+                            .forEach(dependency -> {
+                                if (metadataMap.get(dependency.getName()).getScope().equals(SCOPE_THREAD)) {
+                                    final String message = format("singleton bean %s depends on thread bean %s",
+                                            metadata.getName(), dependency.getName());
+                                    throw new RuntimeException(message);
+                                }
+                                final Object dependencyBean = getBean(dependency.getName(), dependency.getBeanClass()).get();
+                                dependency.getConsumer().accept(newBean, dependencyBean);
+                            });
                 }
             } finally {
                 lock.unlock();
@@ -164,7 +183,8 @@ public enum DingManager {
             lock.lock();
             try {
                 final DingMetadata<BeanType> metadata = (DingMetadata<BeanType>) metadataMap.get(dingName);
-                bean = metadata.getSupplier().get();
+                final BeanType newBean = metadata.getSupplier().get();
+                bean = newBean;
                 if (!metadata.getBeanClass().isAssignableFrom(bean.getClass())) {
                     final String message = format("incompatible class for bean %s, bean class is %s but got %s",
                             metadata.getName(), bean.getClass(), metadata.getBeanClass());
@@ -172,6 +192,11 @@ public enum DingManager {
                 }
                 beanList.set(index, bean);
                 logger.finer(() -> format("created new bean %s of type %s", metadata.getName(), metadata.getBeanClass()));
+                metadata.getDependencies().stream()
+                        .forEach(dependency -> {
+                            final Object dependencyBean = getBean(dependency.getName(), dependency.getBeanClass()).get();
+                            dependency.getConsumer().accept(newBean, dependencyBean);
+                        });
             } finally {
                 lock.unlock();
             }
