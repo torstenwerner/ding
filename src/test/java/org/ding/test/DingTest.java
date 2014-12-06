@@ -177,4 +177,15 @@ public class DingTest {
         final Supplier<StringBuilder> sb = dingManager.getBean("stringBuilder", StringBuilder.class);
         assertThat(sb.get().toString(), is("Hello"));
     }
+
+    @Test
+    public void testConstructorInjection() throws Exception {
+        dingManager.addSingletonBean("string", () -> "World!", String.class);
+
+        final Supplier<String> s = dingManager.getBean("string", String.class);
+        dingManager.addSingletonBean("stringBuilder", () -> new StringBuilder(s.get()), StringBuilder.class);
+
+        final Supplier<StringBuilder> sb = dingManager.getBean("stringBuilder", StringBuilder.class);
+        assertThat(sb.get().toString(), is("World!"));
+    }
 }
