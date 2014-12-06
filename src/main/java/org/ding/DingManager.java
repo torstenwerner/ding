@@ -7,12 +7,15 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 import static java.lang.String.format;
 import static java.util.Collections.synchronizedList;
 
 public enum DingManager {
     dingManager;
+
+    private final Logger logger = Logger.getLogger(getClass().getName());
 
     // might be concurrently accessed
     private List<Object> beanList = synchronizedList(new ArrayList<>());
@@ -23,23 +26,48 @@ public enum DingManager {
 
     private Lock lock = new ReentrantLock();
 
+    /**
+     * deletes all beans which is done during testing
+     */
+    public void deleteAllBeans() {
+        lock.lock();
+        try {
+            beanList.clear();
+            supplierList.clear();
+            singletonMap.clear();
+            logger.info(() -> "delete all beans");
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * adds or replaces a bean
+     *
+     * @param beanName  unique name of the bean
+     * @param supplier  supplier that creates a new object of type BeanType
+     * @param beanClass type or some base type of the bean object which is used for error checking
+     */
     public <BeanType> void addBean(String beanName, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass) {
         lock.lock();
         try {
             int index;
             if (singletonMap.containsKey(beanName)) {
-                if (!singletonMap.get(beanName).getBeanClass().isAssignableFrom(beanClass)) {
+                final Class<?> oldBeanClass = singletonMap.get(beanName).getBeanClass();
+                if (!oldBeanClass.isAssignableFrom(beanClass)) {
                     final String message = format("incompatible classes, old: %s, new: %s",
-                            singletonMap.get(beanName).getBeanClass(), beanClass);
+                            oldBeanClass, beanClass);
                     throw new RuntimeException(message);
                 }
                 index = singletonMap.get(beanName).getIndex();
                 beanList.set(index, null);
                 supplierList.set(index, supplier);
+                logger.info(() -> format("replace bean %s of type %s with type %s", beanName, oldBeanClass, beanClass));
             } else {
                 index = beanList.size();
                 beanList.add(null);
                 supplierList.add(supplier);
+                logger.fine(() -> format("add bean %s of type %s", beanName, beanClass));
             }
             singletonMap.put(beanName, new DingMetadata<>(index, beanClass));
         } finally {
@@ -47,8 +75,9 @@ public enum DingManager {
         }
     }
 
-    // The default execution path is not protected by the lock for performance reasons.
-    private <BeanType> BeanType getBean(int index, Class<? extends BeanType> beanClass) {
+    // The default execution path is not protected by the lock for performance reasons. This method should be really
+    // fast for the default execution path.
+    private <BeanType> BeanType getBean(int index, String beanName, Class<? extends BeanType> beanClass) {
         // This line is potentially accessed concurrently. It is protected by the synchronizedList.
         BeanType bean = (BeanType) beanList.get(index);
 
@@ -65,14 +94,24 @@ public enum DingManager {
                         throw new RuntimeException(message);
                     }
                     beanList.set(index, bean);
+                    logger.finer(() -> format("created new bean %s of type %s", beanName, beanClass));
                 }
             } finally {
                 lock.unlock();
             }
+        } else {
+            logger.finest(() -> format("found existing bean %s of type %s", beanName, beanClass));
         }
         return bean;
     }
 
+    /**
+     * fetches a supplier for the bean
+     *
+     * @param beanName  unique name of the bean
+     * @param beanClass type or a subtype of the registered bean
+     * @return a supplier that can be used to fetch the actual bean
+     */
     public <BeanType> Supplier<BeanType> getBean(String beanName, Class<? extends BeanType> beanClass) {
         lock.lock();
         try {
@@ -85,7 +124,8 @@ public enum DingManager {
                         beanClass);
                 throw new RuntimeException(message);
             }
-            return () -> getBean(metadata.getIndex(), beanClass);
+            logger.finer(() -> format("created wrapper for bean %s of type %s", beanName, beanClass));
+            return () -> getBean(metadata.getIndex(), beanName, beanClass);
         } finally {
             lock.unlock();
         }

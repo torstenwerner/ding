@@ -1,6 +1,7 @@
 package org.ding.test;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.function.Supplier;
@@ -8,10 +9,16 @@ import java.util.function.Supplier;
 import static org.ding.DingManager.dingManager;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 public class DingTest {
+    @Before
+    public void before() {
+        dingManager.deleteAllBeans();
+    }
+
     @Test
-    public void testSuccess() throws Exception {
+    public void testBasicUsage() throws Exception {
         final StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("Hello");
         dingManager.addBean("hello", () -> stringBuilder, CharSequence.class);
@@ -29,14 +36,47 @@ public class DingTest {
         assertThat(bean02.get(), notNullValue());
         assertThat(bean02.get().length(), is(6));
         assertThat(bean02.get(), startsWith("Wo"));
+    }
 
+    @Test
+    public void testWrongTypeDuringGet() throws Exception {
+        dingManager.addBean("hello", () -> "World!", String.class);
+        try {
+            dingManager.getBean("hello", Integer.class);
+            fail("missing exception");
+        } catch (RuntimeException e) {
+            assertThat(e.getMessage(),
+                    is("incompatible class, bean class is class java.lang.String but got class java.lang.Integer"));
+        }
+
+    }
+
+    @Test
+    public void testTypeDuringAdd() throws Exception {
+        dingManager.addBean("hello", () -> "World!", String.class);
+        final Supplier<CharSequence> bean = dingManager.getBean("hello", String.class);
+        bean.get();
         dingManager.addBean("hello", () -> 26, String.class);
         try {
-            bean02.get();
-            Assert.fail("exception missing");
+            bean.get();
+            fail("exception missing");
         } catch (RuntimeException e) {
             assertThat(e.getMessage(),
                     is("incompatible class, bean class is class java.lang.Integer but got class java.lang.String"));
+        }
+    }
+
+    @Test
+    public void testTypeDoubleAdd() throws Exception {
+        dingManager.addBean("hello", () -> "Hello", String.class);
+        final Supplier<CharSequence> bean = dingManager.getBean("hello", String.class);
+        bean.get();
+        try {
+            dingManager.addBean("hello", () -> "World!", CharSequence.class);
+            fail("missing exception");
+        } catch (RuntimeException e) {
+            assertThat(e.getMessage(),
+                    is("incompatible classes, old: class java.lang.String, new: interface java.lang.CharSequence"));
         }
     }
 }
