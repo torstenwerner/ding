@@ -168,7 +168,7 @@ public class DingTest {
     }
 
     @Test
-    public void testInject() throws Exception {
+    public void testInject01() throws Exception {
         dingManager.addSingletonBean("string", () -> "Hello", String.class);
         dingManager.addSingletonBean("stringBuilder", StringBuilder::new, StringBuilder.class,
                 new DingDependency<>("string", StringBuilder::append, String.class));
@@ -176,6 +176,26 @@ public class DingTest {
 
         final Supplier<StringBuilder> sb = dingManager.getBean("stringBuilder", StringBuilder.class);
         assertThat(sb.get().toString(), is("Hello"));
+    }
+
+    @Test
+    public void testInject02() throws Exception {
+        dingManager.addSingletonBean("third", ThirdBean::new, ThirdBean.class,
+                new DingDependency<>("fourth", ThirdBean::setFourthBean, FourthBean.class));
+        dingManager.addSingletonBean("fourth", FourthBean::new, FourthBean.class);
+
+        final Supplier<ThirdBean> thirdBean = dingManager.getBean("third", ThirdBean.class);
+        final Supplier<FourthBean> fourthBean = dingManager.getBean("fourth", FourthBean.class);
+
+        assertThat(thirdBean.get().whoami(), is("org.ding.test.ThirdBean"));
+        assertThat(thirdBean.get().getFourthBean(), notNullValue());
+
+        thirdBean.get().setFourthBean(null);
+        assertThat(thirdBean.get().getFourthBean(), nullValue());
+
+        dingManager.addSingletonBean("fourth", FourthBean::new, FourthBean.class);
+        assertThat(thirdBean.get().getFourthBean(), notNullValue());
+        assertThat(thirdBean.get().getFourthBean().whoami(), is("org.ding.test.FourthBean"));
     }
 
     @Test
