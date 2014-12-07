@@ -6,14 +6,16 @@ import java.util.function.Supplier;
 
 class DingMetadata<BeanType> {
     private final DingName name;
+    private int index;
     private final Supplier<BeanType> supplier;
     private final Class<? extends BeanType> beanClass;
     private final DingScope scope;
     private final List<DingDependency> dependencies;
 
-    public DingMetadata(DingName name, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass, DingScope scope,
-                        DingDependency... dependencies) {
+    public DingMetadata(DingName name, int index, Supplier<BeanType> supplier, Class<? extends BeanType> beanClass,
+                        DingScope scope, DingDependency... dependencies) {
         this.name = name;
+        this.index = index;
         this.supplier = supplier;
         this.beanClass = beanClass;
         this.scope = scope;
@@ -22,6 +24,10 @@ class DingMetadata<BeanType> {
 
     public DingName getName() {
         return name;
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     public Supplier<BeanType> getSupplier() {

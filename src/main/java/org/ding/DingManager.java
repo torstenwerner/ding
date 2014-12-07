@@ -25,7 +25,6 @@ public enum DingManager {
     private List<Object> singletonBeanList = new CopyOnWriteArrayList<>();
 
     // must always be protected by the lock
-    private Map<DingName, Integer> indexMap = new HashMap<>();
     private Map<DingName, DingMetadata<?>> metadataMap = new HashMap<>();
 
     // is accessed by the current thread only and need no protection
@@ -40,7 +39,6 @@ public enum DingManager {
         lock.lock();
         try {
             singletonBeanList.clear();
-            indexMap.clear();
             metadataMap.clear();
             logger.info(() -> "delete all beans");
         } finally {
@@ -51,9 +49,9 @@ public enum DingManager {
     public void initializeSingletons() {
         lock.lock();
         try {
-            indexMap.entrySet().stream()
+            metadataMap.entrySet().stream()
                     .map(Map.Entry::getKey)
-                    .forEach(key -> getSingletonBean(indexMap.get(key), key));
+                    .forEach(key -> getSingletonBean(metadataMap.get(key).getIndex(), key));
         } finally {
             lock.unlock();
         }
@@ -78,11 +76,11 @@ public enum DingManager {
                             oldBeanClass, beanClass);
                     throw new RuntimeException(message);
                 }
-                final int index = indexMap.get(dingName);
+                final int index = metadataMap.get(dingName).getIndex();
                 singletonBeanList.set(index, null);
                 logger.info(() -> format("replace bean %s of type %s with type %s", dingName, oldBeanClass, beanClass));
 
-                metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_SINGLETON, dependencies));
+                metadataMap.put(dingName, new DingMetadata<>(dingName, index, supplier, beanClass, SCOPE_SINGLETON, dependencies));
                 // lazy?
                 metadataMap.entrySet().stream()
                         .map(Map.Entry::getKey)
@@ -90,10 +88,9 @@ public enum DingManager {
 
             } else {
                 final int index = singletonBeanList.size();
-                indexMap.put(dingName, index);
                 singletonBeanList.add(null);
                 logger.fine(() -> format("add bean %s of type %s", dingName, beanClass));
-                metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_SINGLETON, dependencies));
+                metadataMap.put(dingName, new DingMetadata<>(dingName, index, supplier, beanClass, SCOPE_SINGLETON, dependencies));
             }
         } finally {
             lock.unlock();
@@ -127,14 +124,14 @@ public enum DingManager {
                             oldBeanClass, beanClass);
                     throw new RuntimeException(message);
                 }
-                final int index = indexMap.get(dingName);
+                final int index = metadataMap.get(dingName).getIndex();
                 singletonBeanList.set(index, null);
                 logger.info(() -> format("replace bean %s of type %s with type %s", dingName, oldBeanClass, beanClass));
+                metadataMap.put(dingName, new DingMetadata<>(dingName, index, supplier, beanClass, SCOPE_THREAD, dependencies));
             } else {
                 final int index = singletonBeanList.size();
-                indexMap.put(dingName, index);
+                metadataMap.put(dingName, new DingMetadata<>(dingName, index, supplier, beanClass, SCOPE_THREAD, dependencies));
             }
-            metadataMap.put(dingName, new DingMetadata<>(dingName, supplier, beanClass, SCOPE_THREAD, dependencies));
         } finally {
             lock.unlock();
         }
@@ -248,9 +245,9 @@ public enum DingManager {
             logger.finer(() -> format("created wrapper for bean %s of type %s", dingName, beanClass));
             switch (metadata.getScope()) {
                 case SCOPE_SINGLETON:
-                    return () -> getSingletonBean(indexMap.get(dingName), dingName);
+                    return () -> getSingletonBean(metadataMap.get(dingName).getIndex(), dingName);
                 case SCOPE_THREAD:
-                    return () -> getThreadBean(indexMap.get(dingName), dingName);
+                    return () -> getThreadBean(metadataMap.get(dingName).getIndex(), dingName);
                 default:
                     throw new RuntimeException(format("scope %s not supported", metadata.getScope()));
             }
