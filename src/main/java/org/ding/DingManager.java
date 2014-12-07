@@ -105,11 +105,10 @@ public enum DingManager {
     }
 
     private void reinjectReplacedDependency(DingName dependencyName, DingMetadata<?> metadata) {
-        final Supplier<Object> bean = getBean(metadata.getName(), metadata.getBeanClass());
-        final Supplier<Object> dependencyBean = getBean(dependencyName, metadataMap.get(dependencyName).getBeanClass());
+        final DingMetadata<?> depMetadata = metadataMap.get(dependencyName);
         metadata.getDependencies().stream()
                 .filter(dependency -> dependency.getName().equals(dependencyName))
-                .forEach(dependency -> dependency.getConsumer().accept(bean.get(), dependencyBean.get()));
+                .forEach(dependency -> dependency.getConsumer().accept(getBean(metadata), getBean(depMetadata)));
     }
 
     public <BeanType> void addThreadBean(DingName dingName, Supplier<BeanType> supplier,
@@ -178,12 +177,13 @@ public enum DingManager {
                             metadata.getBeanClass()));
                     metadata.getDependencies().stream()
                             .forEach(dependency -> {
-                                if (metadataMap.get(dependency.getName()).getScope().equals(SCOPE_THREAD)) {
+                                final DingMetadata depMetadata = metadataMap.get(dependency.getName());
+                                if (depMetadata.getScope().equals(SCOPE_THREAD)) {
                                     final String message = format("singleton bean %s depends on thread bean %s",
                                             metadata.getName(), dependency.getName());
                                     throw new RuntimeException(message);
                                 }
-                                final Object dependencyBean = getBean(dependency.getName(), dependency.getBeanClass()).get();
+                                final Object dependencyBean = getBean(depMetadata);
                                 dependency.getConsumer().accept(newBean, dependencyBean);
                             });
                 }
@@ -213,7 +213,7 @@ public enum DingManager {
                 logger.finer(() -> format("created new bean %s of type %s", metadata.getName(), metadata.getBeanClass()));
                 metadata.getDependencies().stream()
                         .forEach(dependency -> {
-                            final Object dependencyBean = getBean(dependency.getName(), dependency.getBeanClass()).get();
+                            final Object dependencyBean = getBean(metadataMap.get(dependency.getName()));
                             dependency.getConsumer().accept(newBean, dependencyBean);
                         });
             } finally {
@@ -221,6 +221,35 @@ public enum DingManager {
             }
         }
         return bean;
+    }
+
+    private <BeanType> BeanType getBean(DingMetadata<BeanType> metadata) {
+        switch (metadata.getScope()) {
+            case SCOPE_SINGLETON:
+                return getSingletonBean(metadata.getIndex(), metadata.getName());
+            case SCOPE_THREAD:
+                return getThreadBean(metadata.getIndex(), metadata.getName());
+            default:
+                throw new RuntimeException(format("scope %s not supported", metadata.getScope()));
+        }
+    }
+
+    private <BeanType> Supplier<BeanType> getBeanSupplier(DingMetadata<BeanType> metadata) {
+        lock.lock();
+        try {
+            logger.finer(() -> format("created wrapper for bean %s of type %s", metadata.getName(),
+                    metadata.getBeanClass()));
+            switch (metadata.getScope()) {
+                case SCOPE_SINGLETON:
+                    return () -> getSingletonBean(metadata.getIndex(), metadata.getName());
+                case SCOPE_THREAD:
+                    return () -> getThreadBean(metadata.getIndex(), metadata.getName());
+                default:
+                    throw new RuntimeException(format("scope %s not supported", metadata.getScope()));
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -242,15 +271,7 @@ public enum DingManager {
                         metadata.getBeanClass(), beanClass);
                 throw new RuntimeException(message);
             }
-            logger.finer(() -> format("created wrapper for bean %s of type %s", dingName, beanClass));
-            switch (metadata.getScope()) {
-                case SCOPE_SINGLETON:
-                    return () -> getSingletonBean(metadataMap.get(dingName).getIndex(), dingName);
-                case SCOPE_THREAD:
-                    return () -> getThreadBean(metadataMap.get(dingName).getIndex(), dingName);
-                default:
-                    throw new RuntimeException(format("scope %s not supported", metadata.getScope()));
-            }
+            return getBeanSupplier(metadata);
         } finally {
             lock.unlock();
         }
