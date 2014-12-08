@@ -1,10 +1,10 @@
 # Dependency Injection of next Generation (Ding) for Java 8
 
 - no dependencies except Java 8
-- only singleton scope is currently supported but more is planned for the future
+- singleton and thread scope is currently supported but more might be added in the future
 - implementation is based on lambda syntax
 - no bytecode modification
-- no reflection: at least not yet but might be added in the future
+- almost no reflection, just a little bit for better error messages
 - beans are registered with Java code only (no XML configuration)
 - namespace support for bean names: multiple libraries can provide beans and avoid name conflicts
 - non library application code can ignore namespaces
