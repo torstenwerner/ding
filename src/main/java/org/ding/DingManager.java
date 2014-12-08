@@ -80,11 +80,8 @@ public enum DingManager {
                 singletonBeanList.set(index, null);
                 logger.info(() -> format("replace bean %s of type %s with type %s", dingName, oldBeanClass, beanClass));
 
+                resetParentsByDependencyName(dingName);
                 metadataMap.put(dingName, new DingMetadata<>(dingName, index, supplier, beanClass, SCOPE_SINGLETON, dependencies));
-                // lazy?
-                metadataMap.entrySet().stream()
-                        .map(Map.Entry::getKey)
-                        .forEach(this::reinjectReplacedDependency);
 
             } else {
                 final int index = singletonBeanList.size();
@@ -97,18 +94,20 @@ public enum DingManager {
         }
     }
 
-    private void reinjectReplacedDependency(DingName dependencyName) {
+    private void resetParentsByDependencyName(DingName dependencyName) {
         metadataMap.entrySet().stream()
                 .map(Map.Entry::getValue)
-                .filter(value -> value.getScope().equals(SCOPE_SINGLETON))
-                .forEach(value -> reinjectReplacedDependency(dependencyName, value));
+                .filter(parent -> parent.getScope().equals(SCOPE_SINGLETON))
+                .forEach(parent -> resetParent(dependencyName, parent));
     }
 
-    private void reinjectReplacedDependency(DingName dependencyName, DingMetadata<?> metadata) {
-        final DingMetadata<?> depMetadata = metadataMap.get(dependencyName);
-        metadata.getDependencies().stream()
+    private void resetParent(DingName dependencyName, DingMetadata<?> parent) {
+        parent.getDependencies().stream()
                 .filter(dependency -> dependency.getName().equals(dependencyName))
-                .forEach(dependency -> dependency.getConsumer().accept(getBean(metadata), getBean(depMetadata)));
+                .findAny()
+                .ifPresent(dependency -> {
+                    singletonBeanList.set(parent.getIndex(), null);
+                });
     }
 
     public <BeanType> void addThreadBean(DingName dingName, Supplier<BeanType> supplier,

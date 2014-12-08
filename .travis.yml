@@ -7,4 +7,4 @@ addons:
       secure: "EuP+LdFDhqBWNgmY5y+DawSX56vIWPfHPjCaDxfaAfbIBcJCimgknGRwB8UVEOzQSwZ0Dpael95cKHdjwzLbOENTBnEc1zjOlNaScx8EKPyIRVuGCTv+U7NibL6UFuNZqZb6sTpqREFhwyWXxgX+5gb4zRLFD2vqM9REnvAU1eQ="
     secret:
       secure: "a1dZiTJ2GoIsOt02JKKDO+P4TeLjBSJ3OT7g7SsTKaFSO0yVCB/vNjALEBdk982oIy6IBPPefLGmazmzEHP7ebNSPIHxjPhplPi4enP7QIDzyLaHkE9T5EVsqx5GpFIrp4g0kmzZ8k0Q3izqEP1ZtNatArB0bjKEhzEjYVuwy74="
-    bucket: "S3 Bucket"
+    bucket: "javading"
